@@ -9,6 +9,8 @@ feels alive from first launch. Existing accounts you created will be removed.
 """
 
 import asyncio
+import json
+import os
 import random
 from datetime import datetime, timedelta, timezone
 
@@ -23,42 +25,84 @@ SEED_PASSWORD = "eureka123"
 
 AVATAR_COLORS = ["#D97757", "#6A8D73", "#7C6BAA", "#C48B3F", "#4F7CAC", "#B0654E"]
 
+# The official automated account. Its posts are published by agent.py /
+# the in-app scheduler and carry a verified badge everywhere they render.
+EUREKA_ACCOUNT = {
+    "email": "official@eureka.dev",
+    "username": "eureka",
+    "name": "Eureka Official",
+    "bio": "The official Eureka account. One genuinely fascinating, sourced science discovery at a time.",
+    "interests": [
+        "Physics",
+        "Astronomy",
+        "Biology",
+        "Chemistry",
+        "Math",
+        "Earth Science",
+        "Technology",
+        "Medicine",
+    ],
+    "avatar_color": "#00E676",
+    "location": "Everywhere curiosity lives",
+    "working_at": "Eureka",
+    "link": "https://projecteureka.vercel.app",
+    "verified": True,
+}
+
 ACCOUNTS = [
     {
         "email": "mira@eureka.dev",
+        "username": "mirachandra",
         "name": "Dr. Mira Chandra",
         "bio": "Astrophysicist chasing exoplanet atmospheres. Occasional stargazer.",
         "interests": ["Astronomy", "Physics", "Math"],
+        "location": "Pasadena, CA",
+        "working_at": "Caltech",
     },
     {
         "email": "leo@eureka.dev",
+        "username": "leowhitfield",
         "name": "Leo Whitfield",
         "bio": "Molecular biologist. I think about proteins folding while I sleep.",
         "interests": ["Biology", "Chemistry", "Medicine"],
+        "location": "Cambridge, UK",
+        "working_at": "MRC Laboratory",
     },
     {
         "email": "sana@eureka.dev",
+        "username": "sanaokonkwo",
         "name": "Sana Okonkwo",
         "bio": "Climate scientist reading the story written in ice cores.",
         "interests": ["Earth Science", "Chemistry", "Biology"],
+        "location": "Reykjavik, Iceland",
+        "working_at": "Institute of Earth Sciences",
     },
     {
         "email": "raj@eureka.dev",
+        "username": "rajpatel",
         "name": "Raj Patel",
         "bio": "Computer scientist tinkering at the edge of quantum and AI.",
         "interests": ["Technology", "Physics", "Math"],
+        "location": "Zurich, Switzerland",
+        "working_at": "ETH Zurich",
     },
     {
         "email": "elena@eureka.dev",
+        "username": "elenavasquez",
         "name": "Dr. Elena Vasquez",
         "bio": "Neuroscientist mapping how memory takes root in the brain.",
         "interests": ["Medicine", "Biology", "Technology"],
+        "location": "Boston, MA",
+        "working_at": "MIT",
     },
     {
         "email": "tom@eureka.dev",
+        "username": "tomnowak",
         "name": "Tomasz Nowak",
         "bio": "Science writer. I collect facts that make people say 'wait, really?'",
         "interests": ["Physics", "Astronomy", "Earth Science"],
+        "location": "Kraków, Poland",
+        "working_at": "Freelance",
     },
 ]
 
@@ -1017,11 +1061,13 @@ async def main() -> None:
         "daily_discovery",
         "questions",
         "study_circles",
+        "agent_state",
     ]:
         await db[coll].drop()
 
     # Indexes (mirrors app.database so a fresh seed works standalone).
     await db.users.create_index("email", unique=True)
+    await db.users.create_index("username", unique=True, sparse=True)
     await db.posts.create_index([("created_at", -1)])
     await db.votes.create_index([("post_id", 1), ("user_id", 1)], unique=True)
     await db.bookmarks.create_index([("user_id", 1), ("post_id", 1)], unique=True)
@@ -1041,19 +1087,48 @@ async def main() -> None:
     email_to_id: dict[str, object] = {}
     password_hash = hash_password(SEED_PASSWORD)
 
+    # The official @eureka account is created first so it feels foundational.
+    eureka_doc = {
+        "email": EUREKA_ACCOUNT["email"],
+        "username": EUREKA_ACCOUNT["username"],
+        "name": EUREKA_ACCOUNT["name"],
+        "password_hash": password_hash,
+        "bio": EUREKA_ACCOUNT["bio"],
+        "interests": EUREKA_ACCOUNT["interests"],
+        "avatar_color": EUREKA_ACCOUNT["avatar_color"],
+        "avatar_url": None,
+        "cover_image": None,
+        "link": EUREKA_ACCOUNT["link"],
+        "location": EUREKA_ACCOUNT["location"],
+        "working_at": EUREKA_ACCOUNT["working_at"],
+        "verified": True,
+        "pinned_post_id": None,
+        "created_at": now - timedelta(days=500),
+    }
+    eureka_result = await db.users.insert_one(eureka_doc)
+    email_to_id[EUREKA_ACCOUNT["email"]] = eureka_result.inserted_id
+
     for i, acc in enumerate(ACCOUNTS):
         doc = {
             "email": acc["email"],
+            "username": acc["username"],
             "name": acc["name"],
             "password_hash": password_hash,
             "bio": acc["bio"],
             "interests": acc["interests"],
             "avatar_color": AVATAR_COLORS[i % len(AVATAR_COLORS)],
+            "avatar_url": None,
+            "cover_image": None,
+            "link": None,
+            "location": acc.get("location"),
+            "working_at": acc.get("working_at"),
+            "verified": False,
+            "pinned_post_id": None,
             "created_at": now - timedelta(days=random.randint(120, 400)),
         }
         result = await db.users.insert_one(doc)
         email_to_id[acc["email"]] = result.inserted_id
-    print(f"  Inserted {len(ACCOUNTS)} accounts (password for all: '{SEED_PASSWORD}').")
+    print(f"  Inserted {len(ACCOUNTS) + 1} accounts (password for all: '{SEED_PASSWORD}').")
 
     post_ids = []
     for i, post in enumerate(POSTS):
@@ -1067,6 +1142,7 @@ async def main() -> None:
             "body": post["body"],
             "category": post["category"],
             "source_url": post.get("source_url"),
+            "images": [],
             "author_id": author_id,
             "created_at": created,
             "upvotes": random.randint(3, 240),
@@ -1077,6 +1153,50 @@ async def main() -> None:
         result = await db.posts.insert_one(doc)
         post_ids.append((result.inserted_id, author_id, created))
     print(f"  Inserted {len(POSTS)} posts.")
+
+    # Seed a handful of posts from the official @eureka account (drawn from the
+    # same curated pool the content agent uses) so its profile and the feed
+    # aren't empty on first launch, and pin one to its profile.
+    eureka_id = email_to_id[EUREKA_ACCOUNT["email"]]
+    agent_pool_path = (
+        os.path.join(os.path.dirname(__file__), "app", "data", "agent_posts.json")
+    )
+    eureka_post_ids = []
+    if os.path.exists(agent_pool_path):
+        with open(agent_pool_path, encoding="utf-8") as f:
+            agent_pool = json.load(f)
+        sample = random.sample(agent_pool, min(8, len(agent_pool)))
+        for j, item in enumerate(sample):
+            created = now - timedelta(hours=j * 7 + random.randint(0, 5))
+            doc = {
+                "headline": item["headline"],
+                "body": item["body"],
+                "category": item["category"],
+                "source_url": item.get("source_url"),
+                "images": [],
+                "author_id": eureka_id,
+                "created_at": created,
+                "upvotes": random.randint(20, 400),
+                "comment_count": 0,
+            }
+            result = await db.posts.insert_one(doc)
+            eureka_post_ids.append((result.inserted_id, eureka_id, created))
+        # Seed the non-repeating agent pool state, excluding what we just used.
+        used = {agent_pool.index(item) for item in sample}
+        remaining = [i for i in range(len(agent_pool)) if i not in used]
+        random.shuffle(remaining)
+        await db.agent_state.update_one(
+            {"_id": "pool"}, {"$set": {"remaining": remaining}}, upsert=True
+        )
+        if eureka_post_ids:
+            await db.users.update_one(
+                {"_id": eureka_id},
+                {"$set": {"pinned_post_id": eureka_post_ids[0][0]}},
+            )
+        post_ids.extend(eureka_post_ids)
+        print(f"  Inserted {len(eureka_post_ids)} @eureka posts (1 pinned).")
+    else:
+        print("  Skipped @eureka posts (app/data/agent_posts.json not found).")
 
     # Sprinkle a few comments so detail views aren't empty.
     sample_comments = [

@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -23,6 +24,18 @@ def _pick_color(email: str) -> str:
     return _AVATAR_COLORS[sum(ord(c) for c in email) % len(_AVATAR_COLORS)]
 
 
+async def _unique_username(db, name: str) -> str:
+    base = re.sub(r"[^a-z0-9]+", "", name.lower())[:16] or "user"
+    if len(base) < 3:
+        base = (base + "user")[:16]
+    candidate = base
+    suffix = 0
+    while await db.users.find_one({"username": candidate}):
+        suffix += 1
+        candidate = f"{base}{suffix}"
+    return candidate
+
+
 @router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def signup(payload: SignupRequest):
     db = get_db()
@@ -33,12 +46,20 @@ async def signup(payload: SignupRequest):
             detail="An account with this email already exists.",
         )
     doc = {
+        "username": await _unique_username(db, payload.name.strip()),
         "email": payload.email.lower(),
         "name": payload.name.strip(),
         "password_hash": hash_password(payload.password),
         "bio": "",
         "interests": [],
         "avatar_color": _pick_color(payload.email.lower()),
+        "avatar_url": None,
+        "cover_image": None,
+        "link": None,
+        "location": None,
+        "working_at": None,
+        "verified": False,
+        "pinned_post_id": None,
         "created_at": datetime.now(timezone.utc),
     }
     result = await db.users.insert_one(doc)
@@ -77,4 +98,14 @@ async def login_json(payload: LoginRequest):
 
 @router.get("/me", response_model=UserPublic)
 async def me(current_user: dict = Depends(get_current_user)):
-    return user_public(current_user)
+    db = get_db()
+    posts = await db.posts.find({"author_id": current_user["_id"]}).to_list(length=None)
+    post_count = len(posts)
+    credibility_score = (
+        round(sum(p.get("credibility", {}).get("score", 70) for p in posts) / post_count)
+        if post_count
+        else 0
+    )
+    return user_public(
+        current_user, post_count=post_count, credibility_score=credibility_score
+    )

@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.agent_scheduler import start_agent_scheduler, stop_agent_scheduler
 from app.config import get_settings
 from app.database import close_mongo_connection, connect_to_mongo
 from app.routers import (
@@ -14,6 +15,7 @@ from app.routers import (
     notifications,
     posts,
     questions,
+    uploads,
     users,
     waitlist,
 )
@@ -22,7 +24,9 @@ from app.routers import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await connect_to_mongo()
+    start_agent_scheduler()
     yield
+    stop_agent_scheduler()
     await close_mongo_connection()
 
 
@@ -53,6 +57,7 @@ app.include_router(content.router, prefix="/content", tags=["content"])
 app.include_router(questions.router, prefix="/questions", tags=["questions"])
 app.include_router(circles.router, prefix="/circles", tags=["circles"])
 app.include_router(waitlist.router, prefix="/waitlist", tags=["waitlist"])
+app.include_router(uploads.router, prefix="/uploads", tags=["uploads"])
 
 
 @app.get("/", tags=["health"])

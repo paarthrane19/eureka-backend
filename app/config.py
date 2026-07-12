@@ -38,6 +38,12 @@ class Settings(BaseSettings):
         "Medicine",
     ]
 
+    # Automated content agent (the official @eureka account). Disable in an
+    # environment (e.g. a staging deploy) by setting AGENT_ENABLED=false.
+    agent_enabled: bool = True
+    agent_posts_per_day: int = 10
+    agent_username: str = "eureka"
+
 
 @lru_cache
 def get_settings() -> Settings:

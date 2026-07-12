@@ -24,18 +24,37 @@ class TokenResponse(BaseModel):
 # ---------- Users ----------
 class UserPublic(BaseModel):
     id: str
+    username: str
     email: EmailStr
     name: str
     bio: str = ""
     interests: list[str] = []
     avatar_color: str = "#D97757"
+    avatar_url: str | None = None
+    cover_image: str | None = None
+    link: str | None = None
+    location: str | None = None
+    working_at: str | None = None
+    verified: bool = False
+    pinned_post_id: str | None = None
+    post_count: int = 0
+    credibility_score: int = 0
     created_at: datetime
 
 
 class UpdateProfileRequest(BaseModel):
     name: str | None = Field(default=None, max_length=60)
-    bio: str | None = Field(default=None, max_length=280)
+    bio: str | None = Field(default=None, max_length=160)
     interests: list[str] | None = None
+    link: str | None = Field(default=None, max_length=200)
+    location: str | None = Field(default=None, max_length=60)
+    working_at: str | None = Field(default=None, max_length=60)
+    avatar_url: str | None = None
+    cover_image: str | None = None
+
+
+class PinPostRequest(BaseModel):
+    post_id: str | None = None  # None unpins
 
 
 class OnboardingRequest(BaseModel):
@@ -48,12 +67,16 @@ class CreatePostRequest(BaseModel):
     body: str = Field(min_length=1, max_length=280)
     category: str
     source_url: str | None = Field(default=None, max_length=500)
+    images: list[str] = Field(default_factory=list, max_length=2)
 
 
 class Author(BaseModel):
     id: str
+    username: str
     name: str
     avatar_color: str = "#D97757"
+    avatar_url: str | None = None
+    verified: bool = False
 
 
 class Source(BaseModel):
@@ -82,6 +105,8 @@ class PostPublic(BaseModel):
     bookmarked: bool = False
     levels: list[str] = []
     credibility: Credibility
+    images: list[str] = []
+    pinned: bool = False
 
 
 # ---------- Questions ----------
@@ -211,6 +236,11 @@ class DailyDiscoveryPublic(BaseModel):
     category: str
     source_url: str | None = None
     emoji: str
+
+
+# ---------- Uploads ----------
+class UploadResponse(BaseModel):
+    data_url: str
 
 
 TokenResponse.model_rebuild()

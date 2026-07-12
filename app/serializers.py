@@ -4,19 +4,34 @@
 def author_from_user(user: dict) -> dict:
     return {
         "id": str(user["_id"]),
+        "username": user.get("username", ""),
         "name": user.get("name", "Unknown"),
         "avatar_color": user.get("avatar_color", "#D97757"),
+        "avatar_url": user.get("avatar_url"),
+        "verified": user.get("verified", False),
     }
 
 
-def user_public(user: dict) -> dict:
+def user_public(user: dict, *, post_count: int = 0, credibility_score: int = 0) -> dict:
     return {
         "id": str(user["_id"]),
+        "username": user.get("username", ""),
         "email": user["email"],
         "name": user.get("name", ""),
         "bio": user.get("bio", ""),
         "interests": user.get("interests", []),
         "avatar_color": user.get("avatar_color", "#D97757"),
+        "avatar_url": user.get("avatar_url"),
+        "cover_image": user.get("cover_image"),
+        "link": user.get("link"),
+        "location": user.get("location"),
+        "working_at": user.get("working_at"),
+        "verified": user.get("verified", False),
+        "pinned_post_id": (
+            str(user["pinned_post_id"]) if user.get("pinned_post_id") else None
+        ),
+        "post_count": post_count,
+        "credibility_score": credibility_score,
         "created_at": user["created_at"],
     }
 
@@ -68,7 +83,9 @@ def _post_credibility(post: dict) -> dict:
     return {"score": score, "verified_count": 0, "sources": sources}
 
 
-def post_public(post: dict, author: dict, *, upvoted: bool, bookmarked: bool) -> dict:
+def post_public(
+    post: dict, author: dict, *, upvoted: bool, bookmarked: bool, pinned: bool = False
+) -> dict:
     return {
         "id": str(post["_id"]),
         "headline": post["headline"],
@@ -83,6 +100,8 @@ def post_public(post: dict, author: dict, *, upvoted: bool, bookmarked: bool) ->
         "bookmarked": bookmarked,
         "levels": _post_levels(post),
         "credibility": _post_credibility(post),
+        "images": post.get("images", []),
+        "pinned": pinned,
     }
 
 

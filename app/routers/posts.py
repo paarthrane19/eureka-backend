@@ -49,7 +49,11 @@ async def _decorate(posts: list[dict], user_id: ObjectId, db) -> list[dict]:
             continue
         result.append(
             post_public(
-                p, author, upvoted=p["_id"] in voted, bookmarked=p["_id"] in marked
+                p,
+                author,
+                upvoted=p["_id"] in voted,
+                bookmarked=p["_id"] in marked,
+                pinned=author.get("pinned_post_id") == p["_id"],
             )
         )
     return result
@@ -98,12 +102,15 @@ async def create_post(
 ):
     if payload.category not in get_settings().categories:
         raise HTTPException(status_code=422, detail="Unknown category.")
+    if len(payload.images) > 2:
+        raise HTTPException(status_code=422, detail="Maximum 2 images per post.")
     db = get_db()
     doc = {
         "headline": payload.headline.strip(),
         "body": payload.body.strip(),
         "category": payload.category,
         "source_url": payload.source_url,
+        "images": payload.images,
         "author_id": current_user["_id"],
         "created_at": datetime.now(timezone.utc),
         "upvotes": 0,

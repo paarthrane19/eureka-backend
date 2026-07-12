@@ -42,6 +42,7 @@ def get_db() -> AsyncIOMotorDatabase:
 async def _ensure_indexes() -> None:
     db = get_db()
     await db.users.create_index("email", unique=True)
+    await db.users.create_index("username", unique=True, sparse=True)
     await db.posts.create_index([("created_at", -1)])
     await db.posts.create_index("category")
     await db.posts.create_index("author_id")
