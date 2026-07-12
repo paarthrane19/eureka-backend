@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# virtual environment
+.venv/
+venv/
+
+# env files
+.env
+.env.*
+!.env.example
+
+# misc
+.DS_Store
+
+# editor/tooling
+.claude/
