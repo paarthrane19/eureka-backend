@@ -84,8 +84,16 @@ backend/
 | GET    | `/posts/{id}/comments`     | Threaded comments                      |
 | POST   | `/posts/{id}/comments`     | Add a comment                          |
 | GET    | `/notifications`           | Your notifications                     |
+| POST   | `/admin/agent/post`        | Publish an official @eureka post (admin token, not a user JWT) |
 
 All routes except signup/login require an `Authorization: Bearer <token>` header.
+
+`/admin/agent/post` is protected by a separate shared secret rather than a user
+JWT: send `Authorization: Bearer <EUREKA_ADMIN_TOKEN>`. It publishes a post from
+the official (verified) @eureka account, creating that account on first use, and
+flags the post with `is_agent_post`. Categories use lowercase slugs (`physics`,
+`astronomy`, `biology`, `chemistry`, `math`, `earth-science`, `technology`,
+`medicine`).
 
 ## Notes
 
@@ -112,6 +120,7 @@ All routes except signup/login require an `Authorization: Bearer <token>` header
    | `MONGO_DB`       | `eureka`                                                                                                                     |
    | `JWT_SECRET`     | A long random string — **do not reuse the dev default**                                                                      |
    | `CORS_ORIGINS`   | `https://projecteureka.vercel.app` (comma-separate to add more)                                                              |
+   | `EUREKA_ADMIN_TOKEN` | Shared secret for the protected admin routes (`POST /admin/agent/post`). Use a long random string; leave blank to disable |
 
    Railway also injects `PORT` automatically — no need to set it yourself.
 4. **Deploy.** Railway detects Python via Nixpacks, installs `requirements.txt`,

@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     agent_posts_per_day: int = 10
     agent_username: str = "eureka"
 
+    # Shared secret for the protected admin endpoints (e.g. POST /admin/agent/post).
+    # Set EUREKA_ADMIN_TOKEN in the environment; a blank value disables the routes.
+    eureka_admin_token: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

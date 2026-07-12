@@ -7,6 +7,7 @@ from app.agent_scheduler import start_agent_scheduler, stop_agent_scheduler
 from app.config import get_settings
 from app.database import close_mongo_connection, connect_to_mongo
 from app.routers import (
+    admin,
     auth,
     chat,
     circles,
@@ -58,6 +59,7 @@ app.include_router(questions.router, prefix="/questions", tags=["questions"])
 app.include_router(circles.router, prefix="/circles", tags=["circles"])
 app.include_router(waitlist.router, prefix="/waitlist", tags=["waitlist"])
 app.include_router(uploads.router, prefix="/uploads", tags=["uploads"])
+app.include_router(admin.router, prefix="/admin", tags=["admin"])
 
 
 @app.get("/", tags=["health"])
