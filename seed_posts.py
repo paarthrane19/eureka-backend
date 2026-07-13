@@ -1,9 +1,10 @@
 """Seed the official @eureka account with 50 curated science discovery posts.
 
 Idempotent-ish: it finds-or-creates the official account, then inserts 50 posts
-attributed to it. Run directly:
+attributed to it. Point it at a database with MONGODB_URI, e.g. the Railway
+production connection string:
 
-    python seed_posts.py
+    MONGODB_URI='mongodb://user:pass@host:port' python seed_posts.py
 
 Each post has a topic-matched image (Wikimedia Commons, license-free), a real
 source URL, a randomized upvote count, and a created_at spread across the last
@@ -11,9 +12,12 @@ source URL, a randomized upvote count, and a created_at spread across the last
 """
 
 import asyncio
+import os
 import random
 import secrets
+import sys
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlsplit, urlunsplit
 
 from app.database import close_mongo_connection, connect_to_mongo, get_db
 from app.security import hash_password
@@ -546,7 +550,34 @@ async def _get_or_create_official(db) -> object:
     return result.inserted_id
 
 
+def _resolve_target() -> str:
+    """Return the Mongo URI to seed, refusing to silently fall back to localhost.
+
+    Seeding is destructive-ish and easy to run against the wrong database, so we
+    require MONGODB_URI (or MONGO_URI) to be set explicitly rather than letting
+    the app config default to localhost.
+    """
+    uri = os.getenv("MONGODB_URI") or os.getenv("MONGO_URI")
+    if not uri:
+        sys.exit(
+            "MONGODB_URI is not set. Point it at the target database, e.g.:\n"
+            "    MONGODB_URI='<railway connection string>' python seed_posts.py"
+        )
+    return uri
+
+
+def _mask(uri: str) -> str:
+    """Hide credentials so the target can be printed for confirmation."""
+    parts = urlsplit(uri)
+    host = parts.hostname or "?"
+    port = f":{parts.port}" if parts.port else ""
+    netloc = f"***@{host}{port}" if parts.username else f"{host}{port}"
+    return urlunsplit((parts.scheme, netloc, parts.path, "", ""))
+
+
 async def main() -> None:
+    uri = _resolve_target()
+    print(f"[seed] Connecting to {_mask(uri)}")
     await connect_to_mongo()
     db = get_db()
 
