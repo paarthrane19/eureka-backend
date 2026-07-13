@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -135,6 +135,35 @@ async def library(current_user: dict = Depends(get_current_user)):
     order = {pid: i for i, pid in enumerate(post_ids)}
     posts.sort(key=lambda p: order.get(p["_id"], 0))
     return await _decorate(posts, current_user["_id"], db)
+
+
+@router.get("/trending", response_model=list[PostPublic])
+async def trending(current_user: dict = Depends(get_current_user)):
+    """Top 5 most-upvoted posts from the last 7 days."""
+    db = get_db()
+    since = datetime.now(timezone.utc) - timedelta(days=7)
+    posts = (
+        await db.posts.find({"created_at": {"$gte": since}})
+        .sort("upvotes", -1)
+        .limit(5)
+        .to_list(length=5)
+    )
+    return await _decorate(posts, current_user["_id"], db)
+
+
+@router.get("/daily-discovery", response_model=PostPublic | None)
+async def daily_discovery(current_user: dict = Depends(get_current_user)):
+    """The single most-upvoted post from the last 24 hours, or null if none."""
+    db = get_db()
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    posts = (
+        await db.posts.find({"created_at": {"$gte": since}})
+        .sort("upvotes", -1)
+        .limit(1)
+        .to_list(length=1)
+    )
+    decorated = await _decorate(posts, current_user["_id"], db)
+    return decorated[0] if decorated else None
 
 
 @router.get("/{post_id}", response_model=PostPublic)
