@@ -1,7 +1,7 @@
 """Protected admin endpoints for programmatically managing official content."""
 
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Header, HTTPException, status
@@ -113,3 +113,18 @@ async def create_agent_post(
     }
     result = await db.posts.insert_one(post)
     return {"id": str(result.inserted_id), "headline": payload.headline}
+
+
+# Lightweight ops dashboard counts (users, posts, comments, last-24h posts)
+# for the admin, gated by the same shared token.
+@router.get("/stats", tags=["admin"])
+async def admin_stats(authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    db = get_db()
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    return {
+        "total_users": await db.users.count_documents({}),
+        "total_posts": await db.posts.count_documents({}),
+        "total_comments": await db.comments.count_documents({}),
+        "posts_last_24h": await db.posts.count_documents({"created_at": {"$gte": since}}),
+    }
