@@ -153,17 +153,20 @@ async def trending(current_user: dict = Depends(get_current_user)):
 
 @router.get("/daily-discovery", response_model=PostPublic | None)
 async def daily_discovery(current_user: dict = Depends(get_current_user)):
-    """The single most-upvoted post from the last 24 hours, or null if none."""
+    """The most-upvoted post from the last 24h, falling back to the last 7 days."""
     db = get_db()
-    since = datetime.now(timezone.utc) - timedelta(hours=24)
-    posts = (
-        await db.posts.find({"created_at": {"$gte": since}})
-        .sort("upvotes", -1)
-        .limit(1)
-        .to_list(length=1)
-    )
-    decorated = await _decorate(posts, current_user["_id"], db)
-    return decorated[0] if decorated else None
+    now = datetime.now(timezone.utc)
+    for window in (timedelta(hours=24), timedelta(days=7)):
+        posts = (
+            await db.posts.find({"created_at": {"$gte": now - window}})
+            .sort("upvotes", -1)
+            .limit(1)
+            .to_list(length=1)
+        )
+        decorated = await _decorate(posts, current_user["_id"], db)
+        if decorated:
+            return decorated[0]
+    return None
 
 
 @router.get("/{post_id}", response_model=PostPublic)

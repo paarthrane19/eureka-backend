@@ -92,11 +92,12 @@ def _mask(uri: str) -> str:
     return urlunsplit((parts.scheme, netloc, parts.path, "", ""))
 
 
-async def main() -> None:
-    uri = _resolve_target()
-    print(f"[seed] Connecting to {_mask(uri)}")
-    await connect_to_mongo()
-    db = get_db()
+async def seed_sidebar(db) -> tuple[int, int]:
+    """Seed questions + study circles, replacing any prior set.
+
+    Returns (question_count, circle_count). Reusable from seed_posts.py so the
+    whole discover experience is seeded in one pass.
+    """
     now = datetime.now(timezone.utc)
 
     # Replace any prior set so the sidebar shows exactly this curated content.
@@ -105,7 +106,7 @@ async def main() -> None:
 
     question_docs = []
     for i, (text, category) in enumerate(QUESTIONS):
-        followers = [ObjectId() for _ in range(random.randint(40, 900))]
+        followers = [ObjectId() for _ in range(random.randint(10, 80))]
         question_docs.append(
             {
                 "text": text,
@@ -133,9 +134,16 @@ async def main() -> None:
         )
     await db.study_circles.insert_many(circle_docs)
 
-    print(
-        f"Inserted {len(question_docs)} questions and {len(circle_docs)} study circles."
-    )
+    return len(question_docs), len(circle_docs)
+
+
+async def main() -> None:
+    uri = _resolve_target()
+    print(f"[seed] Connecting to {_mask(uri)}")
+    await connect_to_mongo()
+    db = get_db()
+    q_count, c_count = await seed_sidebar(db)
+    print(f"Inserted {q_count} questions and {c_count} study circles.")
     await close_mongo_connection()
 
 
