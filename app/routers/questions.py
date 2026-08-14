@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.database import get_db
 from app.schemas import QuestionPublic
-from app.security import get_current_user
+from app.security import get_current_user, get_optional_user
 from app.serializers import question_public
 
 router = APIRouter()
@@ -18,12 +18,16 @@ def _oid(value: str) -> ObjectId:
 
 
 @router.get("", response_model=list[QuestionPublic])
-async def list_questions(current_user: dict = Depends(get_current_user)):
+async def list_questions(current_user: dict | None = Depends(get_optional_user)):
+    # Public discovery: anyone can browse the question list. The `following`
+    # flag is personalised only when a signed-in user is present.
     db = get_db()
-    me = current_user["_id"]
+    me = current_user["_id"] if current_user else None
     questions = await db.questions.find({}).sort("created_at", -1).to_list(length=200)
     return [
-        question_public(q, following=me in (q.get("followers", []) or []))
+        question_public(
+            q, following=me is not None and me in (q.get("followers", []) or [])
+        )
         for q in questions
     ]
 

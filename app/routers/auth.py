@@ -1,10 +1,11 @@
 import re
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.database import get_db
+from app.ratelimit import limiter
 from app.schemas import LoginRequest, SignupRequest, TokenResponse, UserPublic
 from app.security import (
     create_access_token,
@@ -36,8 +37,12 @@ async def _unique_username(db, name: str) -> str:
     return candidate
 
 
+# Auth routes get tight per-IP limits (well below the global 240/min default) to
+# blunt credential stuffing and signup spam now that the site is public. slowapi
+# reads the client IP off `request`, so these handlers must accept it explicitly.
 @router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def signup(payload: SignupRequest):
+@limiter.limit("5/minute")
+async def signup(request: Request, payload: SignupRequest):
     db = get_db()
     existing = await db.users.find_one({"email": payload.email.lower()})
     if existing:
@@ -69,7 +74,8 @@ async def signup(payload: SignupRequest):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(form: OAuth2PasswordRequestForm = Depends()):
+@limiter.limit("10/minute")
+async def login(request: Request, form: OAuth2PasswordRequestForm = Depends()):
     # OAuth2PasswordRequestForm uses `username`; we treat it as the email.
     db = get_db()
     user = await db.users.find_one({"email": form.username.lower()})
@@ -83,7 +89,8 @@ async def login(form: OAuth2PasswordRequestForm = Depends()):
 
 
 @router.post("/login-json", response_model=TokenResponse)
-async def login_json(payload: LoginRequest):
+@limiter.limit("10/minute")
+async def login_json(request: Request, payload: LoginRequest):
     """JSON-friendly login for the mobile client."""
     db = get_db()
     user = await db.users.find_one({"email": payload.email.lower()})

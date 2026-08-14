@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from app.config import get_settings
 from app.database import get_db
 from app.schemas import CreatePostRequest, PostPublic
-from app.security import get_current_user
+from app.security import get_current_user, get_optional_user
 from app.serializers import post_public
 
 router = APIRouter()
@@ -20,8 +20,12 @@ def _oid(value: str) -> ObjectId:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
 
-async def _decorate(posts: list[dict], user_id: ObjectId, db) -> list[dict]:
-    """Attach author, upvoted and bookmarked flags to raw post docs."""
+async def _decorate(posts: list[dict], user_id: ObjectId | None, db) -> list[dict]:
+    """Attach author, upvoted and bookmarked flags to raw post docs.
+
+    `user_id` is None for signed-out visitors, in which case nothing is marked
+    as upvoted/bookmarked (and we skip the per-user lookups entirely).
+    """
     if not posts:
         return []
     author_ids = list({p["author_id"] for p in posts})
@@ -30,18 +34,22 @@ async def _decorate(posts: list[dict], user_id: ObjectId, db) -> list[dict]:
         async for u in db.users.find({"_id": {"$in": author_ids}})
     }
     post_ids = [p["_id"] for p in posts]
-    voted = {
-        v["post_id"]
-        async for v in db.votes.find(
-            {"user_id": user_id, "post_id": {"$in": post_ids}}
-        )
-    }
-    marked = {
-        b["post_id"]
-        async for b in db.bookmarks.find(
-            {"user_id": user_id, "post_id": {"$in": post_ids}}
-        )
-    }
+    if user_id is not None:
+        voted = {
+            v["post_id"]
+            async for v in db.votes.find(
+                {"user_id": user_id, "post_id": {"$in": post_ids}}
+            )
+        }
+        marked = {
+            b["post_id"]
+            async for b in db.bookmarks.find(
+                {"user_id": user_id, "post_id": {"$in": post_ids}}
+            )
+        }
+    else:
+        voted = set()
+        marked = set()
     result = []
     for p in posts:
         author = authors.get(p["author_id"])
@@ -65,7 +73,7 @@ async def list_posts(
     category: str | None = None,
     limit: int = Query(20, ge=1, le=50),
     before: str | None = None,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict | None = Depends(get_optional_user),
 ):
     db = get_db()
     query: dict = {}
@@ -74,7 +82,9 @@ async def list_posts(
         query["category"] = category
 
     # "For You" narrows to the user's chosen interests when they have any.
-    if feed == "for-you":
+    # Signed-out visitors have no personalisation, so they always get the
+    # general feed regardless of the requested `feed` value.
+    if feed == "for-you" and current_user is not None:
         interests = current_user.get("interests") or []
         if interests:
             existing = query.get("category")
@@ -93,7 +103,7 @@ async def list_posts(
 
     cursor = db.posts.find(query).sort("created_at", -1).limit(limit)
     posts = await cursor.to_list(length=limit)
-    return await _decorate(posts, current_user["_id"], db)
+    return await _decorate(posts, current_user["_id"] if current_user else None, db)
 
 
 @router.post("", response_model=PostPublic, status_code=status.HTTP_201_CREATED)
@@ -138,7 +148,7 @@ async def library(current_user: dict = Depends(get_current_user)):
 
 
 @router.get("/trending", response_model=list[PostPublic])
-async def trending(current_user: dict = Depends(get_current_user)):
+async def trending(current_user: dict | None = Depends(get_optional_user)):
     """Top 5 most-upvoted posts from the last 7 days."""
     db = get_db()
     since = datetime.now(timezone.utc) - timedelta(days=7)
@@ -148,14 +158,15 @@ async def trending(current_user: dict = Depends(get_current_user)):
         .limit(5)
         .to_list(length=5)
     )
-    return await _decorate(posts, current_user["_id"], db)
+    return await _decorate(posts, current_user["_id"] if current_user else None, db)
 
 
 @router.get("/daily-discovery", response_model=PostPublic | None)
-async def daily_discovery(current_user: dict = Depends(get_current_user)):
+async def daily_discovery(current_user: dict | None = Depends(get_optional_user)):
     """The most-upvoted post from the last 24h, falling back to the last 7 days."""
     db = get_db()
     now = datetime.now(timezone.utc)
+    uid = current_user["_id"] if current_user else None
     for window in (timedelta(hours=24), timedelta(days=7)):
         posts = (
             await db.posts.find({"created_at": {"$gte": now - window}})
@@ -163,19 +174,23 @@ async def daily_discovery(current_user: dict = Depends(get_current_user)):
             .limit(1)
             .to_list(length=1)
         )
-        decorated = await _decorate(posts, current_user["_id"], db)
+        decorated = await _decorate(posts, uid, db)
         if decorated:
             return decorated[0]
     return None
 
 
 @router.get("/{post_id}", response_model=PostPublic)
-async def get_post(post_id: str, current_user: dict = Depends(get_current_user)):
+async def get_post(
+    post_id: str, current_user: dict | None = Depends(get_optional_user)
+):
     db = get_db()
     post = await db.posts.find_one({"_id": _oid(post_id)})
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
-    decorated = await _decorate([post], current_user["_id"], db)
+    decorated = await _decorate(
+        [post], current_user["_id"] if current_user else None, db
+    )
     if not decorated:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
     return decorated[0]

@@ -10,6 +10,10 @@ from app.database import get_db
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+# Same scheme but non-fatal: yields None instead of raising 401 when there's no
+# Authorization header. Used by public read endpoints that still want to
+# personalise results (upvoted/bookmarked flags) when a token happens to be sent.
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="auth/login", auto_error=False)
 
 
 def hash_password(password: str) -> str:
@@ -66,3 +70,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     if user is None:
         raise credentials_exc
     return user
+
+
+async def get_optional_user(
+    token: str | None = Depends(oauth2_scheme_optional),
+) -> dict | None:
+    """Return the user for a valid token, or None for anonymous/invalid tokens.
+
+    Never raises — public read endpoints use this so signed-out visitors get
+    a response while signed-in visitors still get personalised flags.
+    """
+    if not token:
+        return None
+    return await user_from_token(token)

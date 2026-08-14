@@ -20,7 +20,8 @@ def _oid(value: str) -> ObjectId:
 
 
 @router.get("/posts/{post_id}/comments", response_model=list[CommentPublic])
-async def list_comments(post_id: str, _: dict = Depends(get_current_user)):
+async def list_comments(post_id: str):
+    # Public: anyone can read a post's comment thread (writing still requires auth).
     db = get_db()
     oid = _oid(post_id)
     comments = await db.comments.find({"post_id": oid}).sort(

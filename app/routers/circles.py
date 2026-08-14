@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.database import get_db
 from app.schemas import StudyCirclePublic
-from app.security import get_current_user
+from app.security import get_current_user, get_optional_user
 from app.serializers import study_circle_public
 
 router = APIRouter()
@@ -20,12 +20,16 @@ def _oid(value: str) -> ObjectId:
 
 
 @router.get("", response_model=list[StudyCirclePublic])
-async def list_circles(current_user: dict = Depends(get_current_user)):
+async def list_circles(current_user: dict | None = Depends(get_optional_user)):
+    # Public discovery: anyone can browse study circles. The `joined` flag is
+    # personalised only when a signed-in user is present.
     db = get_db()
-    me = current_user["_id"]
+    me = current_user["_id"] if current_user else None
     circles = await db.study_circles.find({}).sort("created_at", -1).to_list(length=200)
     return [
-        study_circle_public(c, joined=me in (c.get("members", []) or []))
+        study_circle_public(
+            c, joined=me is not None and me in (c.get("members", []) or [])
+        )
         for c in circles
     ]
 

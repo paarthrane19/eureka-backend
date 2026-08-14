@@ -10,7 +10,7 @@ from app.schemas import (
     UpdateProfileRequest,
     UserPublic,
 )
-from app.security import get_current_user
+from app.security import get_current_user, get_optional_user
 from app.serializers import post_public, user_public
 
 router = APIRouter()
@@ -102,7 +102,7 @@ async def get_user(user_id: str):
 
 @router.get("/{user_id}/posts", response_model=list[PostPublic])
 async def get_user_posts(
-    user_id: str, current_user: dict = Depends(get_current_user)
+    user_id: str, current_user: dict | None = Depends(get_optional_user)
 ):
     db = get_db()
     try:
@@ -118,18 +118,25 @@ async def get_user_posts(
     posts = await cursor.to_list(length=200)
 
     post_ids = [p["_id"] for p in posts]
-    voted = {
-        v["post_id"]
-        async for v in db.votes.find(
-            {"user_id": current_user["_id"], "post_id": {"$in": post_ids}}
-        )
-    }
-    marked = {
-        b["post_id"]
-        async for b in db.bookmarks.find(
-            {"user_id": current_user["_id"], "post_id": {"$in": post_ids}}
-        )
-    }
+    # Signed-out visitors see the timeline but nothing marked as their own
+    # upvote/bookmark (they have no per-user state).
+    if current_user is not None:
+        viewer_id = current_user["_id"]
+        voted = {
+            v["post_id"]
+            async for v in db.votes.find(
+                {"user_id": viewer_id, "post_id": {"$in": post_ids}}
+            )
+        }
+        marked = {
+            b["post_id"]
+            async for b in db.bookmarks.find(
+                {"user_id": viewer_id, "post_id": {"$in": post_ids}}
+            )
+        }
+    else:
+        voted = set()
+        marked = set()
     pinned_id = author.get("pinned_post_id")
     return [
         post_public(

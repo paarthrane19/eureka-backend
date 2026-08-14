@@ -2,10 +2,14 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.agent_scheduler import start_agent_scheduler, stop_agent_scheduler
 from app.config import get_settings
 from app.database import close_mongo_connection, connect_to_mongo
+from app.ratelimit import limiter
 from app.routers import (
     admin,
     auth,
@@ -32,6 +36,13 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Eureka API", version="1.0.0", lifespan=lifespan)
+
+# Rate limiting: a per-IP default guards every route (public reads especially)
+# from scraping/abuse now that the site is open. SlowAPIMiddleware enforces the
+# default limits; per-route @limiter.limit decorators (e.g. auth) tighten it.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # Native/mobile clients (Expo Go, etc.) aren't subject to CORS at all, so this
 # only gates browser access. Explicit origins come from CORS_ORIGINS (see
