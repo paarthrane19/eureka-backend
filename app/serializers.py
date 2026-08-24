@@ -135,6 +135,31 @@ def study_circle_public(circle: dict, *, joined: bool) -> dict:
     }
 
 
+def study_circle_detail(
+    circle: dict, *, joined: bool, members: list[dict]
+) -> dict:
+    """`study_circle_public` plus the resolved member roster.
+
+    `members` is the list of real user documents we could resolve; member_count
+    still reflects the raw membership array so the two can differ if a user doc
+    was deleted.
+    """
+    return {
+        **study_circle_public(circle, joined=joined),
+        "members": [author_from_user(u) for u in members],
+    }
+
+
+def circle_message_public(message: dict, author: dict) -> dict:
+    return {
+        "id": str(message["_id"]),
+        "circle_id": str(message["circle_id"]),
+        "author": author_from_user(author),
+        "body": message["body"],
+        "created_at": message["created_at"],
+    }
+
+
 def comment_public(comment: dict, author: dict) -> dict:
     return {
         "id": str(comment["_id"]),

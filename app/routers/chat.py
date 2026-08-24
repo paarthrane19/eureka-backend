@@ -21,7 +21,7 @@ from app.schemas import (
     MessagePublic,
     SendMessageRequest,
 )
-from app.security import get_current_user, user_from_token
+from app.security import get_current_user, get_optional_user, user_from_token
 from app.serializers import (
     chat_room_public,
     contact_public,
@@ -93,15 +93,18 @@ def _sorted_participants(a: ObjectId, b: ObjectId) -> list[ObjectId]:
 # Rooms
 # --------------------------------------------------------------------------
 @router.get("/rooms", response_model=list[ChatRoomPublic])
-async def list_rooms(current_user: dict = Depends(get_current_user)):
+async def list_rooms(current_user: dict | None = Depends(get_optional_user)):
+    # Public: signed-out visitors can browse topic rooms and read along.
+    # `joined`/`unread` are only meaningful for a signed-in member.
     db = get_db()
-    me = current_user["_id"]
+    me = current_user["_id"] if current_user else None
     rooms = await db.chat_rooms.find({}).to_list(length=200)
 
-    memberships = {
-        m["room_id"]: m
-        async for m in db.room_members.find({"user_id": me})
-    }
+    memberships = (
+        {m["room_id"]: m async for m in db.room_members.find({"user_id": me})}
+        if me is not None
+        else {}
+    )
 
     results = []
     for room in rooms:
@@ -185,8 +188,9 @@ async def room_messages(
     room_id: str,
     before: str | None = None,
     limit: int = Query(50, ge=1, le=100),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict | None = Depends(get_optional_user),
 ):
+    # Public read: visitors can follow a room's conversation before signing up.
     db = get_db()
     oid = _oid(room_id)
     room = await db.chat_rooms.find_one({"_id": oid})
@@ -206,11 +210,12 @@ async def room_messages(
     )
     docs.reverse()
 
-    now = datetime.now(timezone.utc)
-    await db.room_members.update_one(
-        {"room_id": oid, "user_id": current_user["_id"]},
-        {"$set": {"last_read_at": now}},
-    )
+    # Only members have a read cursor to advance.
+    if current_user is not None:
+        await db.room_members.update_one(
+            {"room_id": oid, "user_id": current_user["_id"]},
+            {"$set": {"last_read_at": datetime.now(timezone.utc)}},
+        )
 
     return await _decorate_messages(docs, db)
 

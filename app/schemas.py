@@ -133,6 +133,24 @@ class StudyCirclePublic(BaseModel):
     created_at: datetime
 
 
+class StudyCircleDetail(StudyCirclePublic):
+    """Circle page payload: the list-card fields plus the member roster."""
+
+    members: list[Author] = []
+
+
+class CircleMessagePublic(BaseModel):
+    id: str
+    circle_id: str
+    author: Author
+    body: str
+    created_at: datetime
+
+
+class SendCircleMessageRequest(BaseModel):
+    body: str = Field(min_length=1, max_length=1000)
+
+
 # ---------- Comments ----------
 class CreateCommentRequest(BaseModel):
     body: str = Field(min_length=1, max_length=280)

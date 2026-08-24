@@ -163,17 +163,34 @@ async def trending(current_user: dict | None = Depends(get_optional_user)):
 
 @router.get("/daily-discovery", response_model=PostPublic | None)
 async def daily_discovery(current_user: dict | None = Depends(get_optional_user)):
-    """The most-upvoted post from the last 24h, falling back to the last 7 days."""
+    """The most-upvoted post from the last 24h, widening the window until one is found.
+
+    Explore renders this as the page's hero, so an empty or weak pick is very
+    visible. A quiet day would otherwise surface a zero-upvote post (or nothing
+    at all), so we keep widening — 24h, a week, a month, then all time — and
+    only return None when there are genuinely no posts.
+    """
     db = get_db()
     now = datetime.now(timezone.utc)
     uid = current_user["_id"] if current_user else None
-    for window in (timedelta(hours=24), timedelta(days=7)):
+    windows: list[timedelta | None] = [
+        timedelta(hours=24),
+        timedelta(days=7),
+        timedelta(days=30),
+        None,  # all time
+    ]
+    for window in windows:
+        query = {"created_at": {"$gte": now - window}} if window else {}
         posts = (
-            await db.posts.find({"created_at": {"$gte": now - window}})
+            await db.posts.find(query)
             .sort("upvotes", -1)
             .limit(1)
             .to_list(length=1)
         )
+        # Skip windows whose best post has nothing behind it — a wider window
+        # will find the same post anyway, and may find a better one.
+        if posts and posts[0].get("upvotes", 0) <= 0 and window is not None:
+            continue
         decorated = await _decorate(posts, uid, db)
         if decorated:
             return decorated[0]
