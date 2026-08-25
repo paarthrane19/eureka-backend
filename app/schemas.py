@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 # ---------- Auth ----------
@@ -62,12 +62,42 @@ class OnboardingRequest(BaseModel):
 
 
 # ---------- Posts ----------
+# Per-level character caps, mirrored by the compose form's counters.
+LEVEL_LIMITS = (300, 300, 600)
+
+
 class CreatePostRequest(BaseModel):
-    headline: str = Field(min_length=1, max_length=140)
-    body: str = Field(min_length=1, max_length=280)
+    headline: str = Field(min_length=1, max_length=100)
+    body: str = Field(min_length=1, max_length=LEVEL_LIMITS[0])
+    # The depth ladder readers step through: [hook, explanation, deep dive].
+    # Optional only because the mobile client still posts headline + body; when
+    # it is omitted the serializer falls back to repeating the body, which is
+    # what left older posts "stuck on hook". Web clients must send all three.
+    levels: list[str] | None = None
     category: str
     source_url: str | None = Field(default=None, max_length=500)
     images: list[str] = Field(default_factory=list, max_length=2)
+
+    @field_validator("levels")
+    @classmethod
+    def _validate_levels(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        if len(value) != 3:
+            raise ValueError("Provide exactly 3 depth levels.")
+        cleaned = []
+        for text, limit in zip(value, LEVEL_LIMITS):
+            stripped = text.strip()
+            if not stripped:
+                raise ValueError("Every depth level needs content.")
+            if len(stripped) > limit:
+                raise ValueError(f"Depth levels are capped at {limit} characters.")
+            cleaned.append(stripped)
+        # Identical levels are the bug this field exists to prevent: the depth
+        # arrows would step between three copies of the same paragraph.
+        if len(set(cleaned)) != 3:
+            raise ValueError("Each depth level must say something different.")
+        return cleaned
 
 
 class Author(BaseModel):

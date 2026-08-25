@@ -115,9 +115,13 @@ async def create_post(
     if len(payload.images) > 2:
         raise HTTPException(status_code=422, detail="Maximum 2 images per post.")
     db = get_db()
+    # Seeded posts keep body == levels[0], so the feed preview and the first
+    # depth level never drift apart. Honour that invariant for new posts too.
+    levels = payload.levels
+    body = levels[0] if levels else payload.body.strip()
     doc = {
         "headline": payload.headline.strip(),
-        "body": payload.body.strip(),
+        "body": body,
         "category": payload.category,
         "source_url": payload.source_url,
         "images": payload.images,
@@ -126,6 +130,8 @@ async def create_post(
         "upvotes": 0,
         "comment_count": 0,
     }
+    if levels:
+        doc["levels"] = levels
     result = await db.posts.insert_one(doc)
     doc["_id"] = result.inserted_id
     return post_public(doc, current_user, upvoted=False, bookmarked=False)
