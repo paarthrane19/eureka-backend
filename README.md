@@ -75,6 +75,8 @@ backend/
 | POST   | `/auth/signup`             | Returns JWT + user                     |
 | POST   | `/auth/login-json`         | JSON login for the mobile client       |
 | GET    | `/auth/me`                 | Current user (Bearer token)            |
+| POST   | `/auth/forgot-password`    | Email a reset link if the address has an account (always returns generic success) |
+| POST   | `/auth/reset-password`     | Consume a reset token, set a new password |
 | POST   | `/users/me/onboarding`     | Save 3+ interests                      |
 | GET    | `/posts?feed=for-you`      | Feed; `feed=all\|for-you`, `category`, `before` cursor |
 | POST   | `/posts`                   | Create a post                          |
@@ -121,8 +123,19 @@ flags the post with `is_agent_post`. Categories use lowercase slugs (`physics`,
    | `JWT_SECRET`     | A long random string — **do not reuse the dev default**                                                                      |
    | `CORS_ORIGINS`   | `https://projecteureka.vercel.app` (comma-separate to add more)                                                              |
    | `EUREKA_ADMIN_TOKEN` | Shared secret for the protected admin routes (`POST /admin/agent/post`). Use a long random string; leave blank to disable |
+   | `RESEND_API_KEY` | API key from [resend.com](https://resend.com) — see below. Leave blank to disable password reset emails (link is only logged) |
+   | `EMAIL_FROM`     | `Eureka <onboarding@resend.dev>` until a domain is verified in Resend, then `Eureka <noreply@yourdomain.com>` |
+   | `FRONTEND_URL`   | `https://projecteureka.vercel.app` — used to build the link inside reset emails |
 
    Railway also injects `PORT` automatically — no need to set it yourself.
+
+   **Getting a Resend API key:** sign up free at [resend.com](https://resend.com)
+   (no credit card, 3,000 emails/month / 100/day free tier) → **API Keys** in
+   the sidebar → **Create API Key** → give it a name and "Sending access" →
+   copy the key (shown once) into `RESEND_API_KEY`. Out of the box you can only
+   send to the email address you signed up with; to email real users, add your
+   domain under **Domains** → **Add Domain** and add the DNS records it gives
+   you, then switch `EMAIL_FROM` to an address on that domain.
 4. **Deploy.** Railway detects Python via Nixpacks, installs `requirements.txt`,
    and runs the start command from `railway.json` / `Procfile`:
    ```

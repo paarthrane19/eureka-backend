@@ -21,6 +21,19 @@ class TokenResponse(BaseModel):
     user: "UserPublic"
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=1)
+    new_password: str = Field(min_length=6, max_length=128)
+
+
+class MessageResponse(BaseModel):
+    message: str
+
+
 # ---------- Users ----------
 class UserPublic(BaseModel):
     id: str

@@ -51,6 +51,19 @@ class Settings(BaseSettings):
     # Set EUREKA_ADMIN_TOKEN in the environment; a blank value disables the routes.
     eureka_admin_token: str = ""
 
+    # Transactional email (password reset) via Resend. A blank API key doesn't
+    # error — it just logs the reset link instead of emailing it, so the flow
+    # is testable locally without a Resend account. See app/email.py.
+    resend_api_key: str = ""
+    # Resend's shared sandbox sender; only deliverable to your own Resend
+    # account email until you verify a domain. Set EMAIL_FROM to
+    # "Eureka <noreply@yourdomain.com>" once a domain is verified.
+    email_from: str = "Eureka <onboarding@resend.dev>"
+
+    # Base URL of the web frontend, used to build links inside emails (e.g.
+    # the password reset link). No trailing slash.
+    frontend_url: str = "https://projecteureka.vercel.app"
+
 
 @lru_cache
 def get_settings() -> Settings:

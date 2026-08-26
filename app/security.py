@@ -1,3 +1,5 @@
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, HTTPException, status
@@ -22,6 +24,17 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
+
+
+def generate_reset_token() -> str:
+    """A random, URL-safe token to email to the user, never stored as-is."""
+    return secrets.token_urlsafe(32)
+
+
+def hash_reset_token(token: str) -> str:
+    """Deterministic hash used to look up a reset token without storing the
+    raw value, so a database read can't be replayed as a valid reset link."""
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 def create_access_token(subject: str) -> str:

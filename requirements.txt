@@ -13,3 +13,4 @@ python-dotenv==1.0.1
 pillow==12.3.0
 apscheduler==3.11.3
 slowapi==0.1.9
+httpx==0.28.1

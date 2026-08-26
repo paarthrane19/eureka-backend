@@ -68,3 +68,7 @@ async def _ensure_indexes() -> None:
     await db.study_circles.create_index("category")
     # Landing-page waitlist
     await db.waitlist.create_index("email", unique=True)
+    # Password reset tokens: looked up by hash, auto-purged once expired
+    # (expireAfterSeconds=0 on an absolute date field deletes past-due docs).
+    await db.password_resets.create_index("token_hash", unique=True)
+    await db.password_resets.create_index("expires_at", expireAfterSeconds=0)
