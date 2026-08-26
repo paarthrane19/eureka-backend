@@ -63,7 +63,7 @@ class OnboardingRequest(BaseModel):
 
 # ---------- Posts ----------
 # Per-level character caps, mirrored by the compose form's counters.
-LEVEL_LIMITS = (300, 300, 600)
+LEVEL_LIMITS = (150, 400, 800)
 
 
 class CreatePostRequest(BaseModel):
