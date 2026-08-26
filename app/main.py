@@ -6,7 +6,12 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from app.agent_scheduler import start_agent_scheduler, stop_agent_scheduler
+# Retired 2026-08-26: the in-house content agent (scheduler + curated pool)
+# has been replaced by Astra (Claude Platform Managed Agent) as the single
+# system for ongoing content generation. Its posts never carried explanation/
+# deep-dive levels, which was the actual bug. Left importable but unused
+# below rather than deleted, in case it's needed for reference.
+# from app.agent_scheduler import start_agent_scheduler, stop_agent_scheduler
 from app.config import get_settings
 from app.database import close_mongo_connection, connect_to_mongo
 from app.ratelimit import limiter
@@ -29,9 +34,9 @@ from app.routers import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await connect_to_mongo()
-    start_agent_scheduler()
+    # start_agent_scheduler()  # retired 2026-08-26, see import comment above
     yield
-    stop_agent_scheduler()
+    # stop_agent_scheduler()
     await close_mongo_connection()
 
 

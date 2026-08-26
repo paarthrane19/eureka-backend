@@ -1,4 +1,12 @@
-"""Shared posting logic for the automated @eureka content agent.
+"""RETIRED 2026-08-26 — superseded by Astra (Claude Platform Managed Agent).
+Nothing in the running app calls post_next() anymore (app/agent_scheduler.py
+is disabled); only the standalone agent.py script still imports it. Left in
+place for reference, not deleted. The curated pool this reads from
+(app/data/agent_posts.json) only ever had headline/body/category/source_url
+— no explanation or deep-dive levels — which was the root cause of posts
+getting stuck on the hook.
+
+Shared posting logic for the automated @eureka content agent.
 
 Used by both the in-process APScheduler (app/agent_scheduler.py, the default
 in production) and the standalone `agent.py` script, which can be pointed at

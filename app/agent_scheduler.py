@@ -1,4 +1,11 @@
-"""In-process scheduler for the automated @eureka content agent.
+"""RETIRED 2026-08-26 — no longer started; superseded by Astra (Claude
+Platform Managed Agent), which is now the single system for ongoing content
+generation. Its posts never had explanation/deep-dive levels, which was the
+actual bug being fixed. Left in place for reference, not deleted. The call
+site in app/main.py's lifespan is commented out, and `agent_enabled`
+defaults to False in app/config.py as a second guard.
+
+In-process scheduler for the automated @eureka content agent.
 
 Chosen over a Railway cron job for simplicity: this is a single-service
 deployment (one Railway service running the FastAPI app), so scheduling

@@ -38,9 +38,12 @@ class Settings(BaseSettings):
         "Medicine",
     ]
 
-    # Automated content agent (the official @eureka account). Disable in an
-    # environment (e.g. a staging deploy) by setting AGENT_ENABLED=false.
-    agent_enabled: bool = True
+    # Retired 2026-08-26: the in-house content agent (app/agent_scheduler.py,
+    # app/agent_core.py) is superseded by Astra (Claude Platform Managed
+    # Agent). Its scheduler call is commented out in app/main.py, and this
+    # default is flipped to False as a second guard so an unset env var can't
+    # silently re-enable it. Set AGENT_ENABLED=true to bring it back.
+    agent_enabled: bool = False
     agent_posts_per_day: int = 10
     agent_username: str = "eureka"
 
