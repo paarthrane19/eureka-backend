@@ -17,9 +17,9 @@ RESEND_API_URL = "https://api.resend.com/emails"
 
 async def send_password_reset_email(to: str, reset_url: str) -> None:
     settings = get_settings()
-    subject = "Reset your Eureka password"
+    subject = "Reset your Supasift password"
     html = (
-        "<p>Someone requested a password reset for this Eureka account.</p>"
+        "<p>Someone requested a password reset for this Supasift account.</p>"
         f'<p><a href="{reset_url}">Reset your password</a></p>'
         "<p>This link expires in 1 hour and can only be used once. If you "
         "didn't request this, you can safely ignore this email.</p>"

@@ -29,7 +29,7 @@ async def _run_once() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run the @eureka content agent.")
+    parser = argparse.ArgumentParser(description="Run the @supasift content agent.")
     parser.add_argument(
         "--once", action="store_true", help="Post a single discovery and exit."
     )

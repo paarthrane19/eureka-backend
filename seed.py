@@ -28,10 +28,10 @@ AVATAR_COLORS = ["#D97757", "#6A8D73", "#7C6BAA", "#C48B3F", "#4F7CAC", "#B0654E
 # The official automated account. Its posts are published by agent.py /
 # the in-app scheduler and carry a verified badge everywhere they render.
 EUREKA_ACCOUNT = {
-    "email": "official@eureka.dev",
-    "username": "eureka",
-    "name": "Eureka Official",
-    "bio": "The official Eureka account. One genuinely fascinating, sourced science discovery at a time.",
+    "email": "agent@supasift.com",
+    "username": "supasift",
+    "name": "Supasift Official",
+    "bio": "The official Supasift account. One genuinely fascinating, sourced science discovery at a time.",
     "interests": [
         "Physics",
         "Astronomy",
@@ -44,8 +44,8 @@ EUREKA_ACCOUNT = {
     ],
     "avatar_color": "#00E676",
     "location": "Everywhere curiosity lives",
-    "working_at": "Eureka",
-    "link": "https://projecteureka.vercel.app",
+    "working_at": "Supasift",
+    "link": "https://supasift.com",
     "verified": True,
 }
 

@@ -19,5 +19,5 @@ class WaitlistRequest(BaseModel):
 async def join_waitlist(payload: WaitlistRequest):
     raise HTTPException(
         status_code=status.HTTP_410_GONE,
-        detail="Eureka has launched — the waitlist is closed. Sign up to join.",
+        detail="Supasift has launched — the waitlist is closed. Sign up to join.",
     )

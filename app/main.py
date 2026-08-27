@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI):
     await close_mongo_connection()
 
 
-app = FastAPI(title="Eureka API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="Supasift API", version="1.0.0", lifespan=lifespan)
 
 # Rate limiting: a per-IP default guards every route (public reads especially)
 # from scraping/abuse now that the site is open. SlowAPIMiddleware enforces the
@@ -80,7 +80,7 @@ app.include_router(admin.router, prefix="/admin", tags=["admin"])
 
 @app.get("/", tags=["health"])
 async def root():
-    return {"status": "ok", "service": "eureka-api"}
+    return {"status": "ok", "service": "supasift-api"}
 
 
 @app.get("/categories", tags=["meta"])

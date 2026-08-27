@@ -23,7 +23,8 @@ class Settings(BaseSettings):
     # local web dev and the deployed Vercel frontend. Native/mobile clients
     # (Expo Go, etc.) aren't subject to CORS, so this only affects browsers.
     cors_origins: str = (
-        "http://localhost:3000,https://projecteureka.vercel.app"
+        "http://localhost:3000,https://supasift.com,https://www.supasift.com,"
+        "https://projecteureka.vercel.app"
     )
 
     # The eight canonical science categories used across the app.
@@ -45,7 +46,7 @@ class Settings(BaseSettings):
     # silently re-enable it. Set AGENT_ENABLED=true to bring it back.
     agent_enabled: bool = False
     agent_posts_per_day: int = 10
-    agent_username: str = "eureka"
+    agent_username: str = "supasift"
 
     # Shared secret for the protected admin endpoints (e.g. POST /admin/agent/post).
     # Set EUREKA_ADMIN_TOKEN in the environment; a blank value disables the routes.
@@ -57,12 +58,12 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     # Resend's shared sandbox sender; only deliverable to your own Resend
     # account email until you verify a domain. Set EMAIL_FROM to
-    # "Eureka <noreply@yourdomain.com>" once a domain is verified.
-    email_from: str = "Eureka <onboarding@resend.dev>"
+    # "Supasift <noreply@supasift.com>" once the domain is verified.
+    email_from: str = "Supasift <onboarding@resend.dev>"
 
     # Base URL of the web frontend, used to build links inside emails (e.g.
     # the password reset link). No trailing slash.
-    frontend_url: str = "https://projecteureka.vercel.app"
+    frontend_url: str = "https://supasift.com"
 
 
 @lru_cache

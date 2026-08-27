@@ -654,7 +654,7 @@ def _credibility(source_url: str | None, upvotes: int) -> dict:
 
 
 async def _get_or_create_official(db) -> object:
-    existing = await db.users.find_one({"username": "eureka"})
+    existing = await db.users.find_one({"username": "supasift"})
     if existing:
         await db.users.update_one(
             {"_id": existing["_id"]},
@@ -663,12 +663,12 @@ async def _get_or_create_official(db) -> object:
         return existing["_id"]
     now = datetime.now(timezone.utc)
     doc = {
-        "email": "agent@projecteureka.app",
-        "username": "eureka",
-        "display_name": "Eureka Official",
-        "name": "Eureka Official",
+        "email": "agent@supasift.com",
+        "username": "supasift",
+        "display_name": "Supasift Official",
+        "name": "Supasift Official",
         "password_hash": hash_password(secrets.token_urlsafe(32)),
-        "bio": "Official Eureka account sharing the day's most fascinating science.",
+        "bio": "Official Supasift account sharing the day's most fascinating science.",
         "interests": [
             "Physics", "Astronomy", "Biology", "Chemistry",
             "Math", "Earth Science", "Technology", "Medicine",
@@ -676,9 +676,9 @@ async def _get_or_create_official(db) -> object:
         "avatar_color": "#00E676",
         "avatar_url": None,
         "cover_image": None,
-        "link": "https://projecteureka.vercel.app",
+        "link": "https://supasift.com",
         "location": "Everywhere curiosity lives",
-        "working_at": "Eureka",
+        "working_at": "Supasift",
         "is_verified": True,
         "is_official": True,
         "verified": True,

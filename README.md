@@ -1,6 +1,6 @@
-# Eureka API (FastAPI + MongoDB)
+# Supasift API (FastAPI + MongoDB)
 
-REST backend for the Eureka mobile app. JWT auth (bcrypt-hashed passwords),
+REST backend for the Supasift mobile app. JWT auth (bcrypt-hashed passwords),
 Pydantic models, and MongoDB collections for `users`, `posts`, `comments`,
 `votes`, `bookmarks`, and `notifications`.
 
@@ -86,16 +86,31 @@ backend/
 | GET    | `/posts/{id}/comments`     | Threaded comments                      |
 | POST   | `/posts/{id}/comments`     | Add a comment                          |
 | GET    | `/notifications`           | Your notifications                     |
-| POST   | `/admin/agent/post`        | Publish an official @eureka post (admin token, not a user JWT) |
+| POST   | `/admin/agent/post`        | Publish an official @supasift post (admin token, not a user JWT) |
 
 All routes except signup/login require an `Authorization: Bearer <token>` header.
 
 `/admin/agent/post` is protected by a separate shared secret rather than a user
 JWT: send `Authorization: Bearer <EUREKA_ADMIN_TOKEN>`. It publishes a post from
-the official (verified) @eureka account, creating that account on first use, and
+the official (verified) @supasift account, creating that account on first use, and
 flags the post with `is_agent_post`. Categories use lowercase slugs (`physics`,
 `astronomy`, `biology`, `chemistry`, `math`, `earth-science`, `technology`,
 `medicine`).
+
+## Renaming the official account
+
+The official account is found by username (`AGENT_USERNAME`, default
+`supasift`). A database seeded before the Supasift rebrand still holds it as
+`@eureka`, and the lookup would miss it and create a duplicate — orphaning
+every post already published under the old name. Rename it in place once per
+deployed database (dry run by default):
+
+```bash
+MONGODB_URI='<connection string>' DRY_RUN=true  python rename_official_account.py
+MONGODB_URI='<connection string>' DRY_RUN=false python rename_official_account.py
+```
+
+It's idempotent, and refuses to act if both usernames somehow exist.
 
 ## Notes
 
@@ -121,11 +136,11 @@ flags the post with `is_agent_post`. Categories use lowercase slugs (`physics`,
    | `MONGODB_URI`    | Reference the Mongo plugin's connection string (select it as a variable reference, e.g. `${{MongoDB.MONGO_URL}}`)            |
    | `MONGO_DB`       | `eureka`                                                                                                                     |
    | `JWT_SECRET`     | A long random string — **do not reuse the dev default**                                                                      |
-   | `CORS_ORIGINS`   | `https://projecteureka.vercel.app` (comma-separate to add more)                                                              |
+   | `CORS_ORIGINS`   | `https://supasift.com,https://www.supasift.com` (comma-separate to add more)                                                 |
    | `EUREKA_ADMIN_TOKEN` | Shared secret for the protected admin routes (`POST /admin/agent/post`). Use a long random string; leave blank to disable |
    | `RESEND_API_KEY` | API key from [resend.com](https://resend.com) — see below. Leave blank to disable password reset emails (link is only logged) |
-   | `EMAIL_FROM`     | `Eureka <onboarding@resend.dev>` until a domain is verified in Resend, then `Eureka <noreply@yourdomain.com>` |
-   | `FRONTEND_URL`   | `https://projecteureka.vercel.app` — used to build the link inside reset emails |
+   | `EMAIL_FROM`     | `Supasift <onboarding@resend.dev>` until a domain is verified in Resend, then `Supasift <noreply@supasift.com>` |
+   | `FRONTEND_URL`   | `https://supasift.com` — used to build the link inside reset emails |
 
    Railway also injects `PORT` automatically — no need to set it yourself.
 

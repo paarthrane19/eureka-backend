@@ -55,18 +55,18 @@ def _require_admin(authorization: str | None) -> None:
 
 
 async def _get_or_create_official(db) -> dict:
-    """Return the official @eureka account, creating it if it doesn't exist."""
+    """Return the official @supasift account, creating it if it doesn't exist."""
     username = get_settings().agent_username
     user = await db.users.find_one({"username": username})
     if user:
         return user
     doc = {
         "username": username,
-        "display_name": "Eureka Official",
+        "display_name": "Supasift Official",
         # `name`/`verified` mirror display_name/is_verified so the rest of the
         # app (feed serializers read these keys) renders this account correctly.
-        "name": "Eureka Official",
-        "email": "agent@projecteureka.app",
+        "name": "Supasift Official",
+        "email": "agent@supasift.com",
         "password_hash": hash_password(secrets.token_urlsafe(32)),
         "is_verified": True,
         "is_official": True,
@@ -87,7 +87,7 @@ async def _get_or_create_official(db) -> dict:
     return doc
 
 
-# Lets an authorized operator publish an official @eureka post (used by the
+# Lets an authorized operator publish an official @supasift post (used by the
 # external content agent) via a shared admin token rather than a user JWT.
 @router.post("/agent/post", status_code=status.HTTP_201_CREATED, tags=["admin"])
 async def create_agent_post(
