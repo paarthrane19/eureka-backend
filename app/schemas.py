@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from app.urls import InvalidExternalURL, normalize_external_url
+
 
 # ---------- Auth ----------
 class SignupRequest(BaseModel):
@@ -65,6 +67,16 @@ class UpdateProfileRequest(BaseModel):
     avatar_url: str | None = None
     cover_image: str | None = None
 
+    @field_validator("link")
+    @classmethod
+    def _normalize_link(cls, value: str | None) -> str | None:
+        # Same defect class as source_url: profile links are typed by hand and
+        # arrive as bare domains, which render as relative paths.
+        try:
+            return normalize_external_url(value)
+        except InvalidExternalURL as exc:
+            raise ValueError(str(exc)) from exc
+
 
 class PinPostRequest(BaseModel):
     post_id: str | None = None  # None unpins
@@ -90,6 +102,17 @@ class CreatePostRequest(BaseModel):
     category: str
     source_url: str | None = Field(default=None, max_length=500)
     images: list[str] = Field(default_factory=list, max_length=2)
+
+    @field_validator("source_url")
+    @classmethod
+    def _normalize_source_url(cls, value: str | None) -> str | None:
+        # Readers paste bare domains ("cam.ac.uk/research/..."), which render as
+        # relative paths and 404. Qualify it here so nothing unqualified is ever
+        # written, and reject anything that isn't a safe absolute http(s) URL.
+        try:
+            return normalize_external_url(value)
+        except InvalidExternalURL as exc:
+            raise ValueError(str(exc)) from exc
 
     @field_validator("levels")
     @classmethod
